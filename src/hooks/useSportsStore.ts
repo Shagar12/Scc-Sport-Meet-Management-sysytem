@@ -821,6 +821,26 @@ export function useSportsStore() {
     });
   }, []);
 
+  const mirrorOpsToCloudSql = useCallback(
+    async (user: User, ops: SyncOperation[]) => {
+      if (ops.length === 0) return;
+      try {
+        const token = await user.getIdToken();
+        await fetch('/api/sql/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ operations: ops }),
+        });
+      } catch {
+        // Keep SQL mirroring silent to preserve UI isolation on unstable networks
+      }
+    },
+    []
+  );
+
   const flushSyncQueue = useCallback(async (forceAll = false) => {
     const user = firebaseUserRef.current;
     if (!user || !user.emailVerified || !isOnlineRef.current || flushingRef.current) {
@@ -837,6 +857,7 @@ export function useSportsStore() {
     flushingRef.current = true;
     setIsSyncing(true);
     setLastError(null);
+    const succeededOps: SyncOperation[] = [];
 
     try {
       for (const op of candidates) {
@@ -854,6 +875,7 @@ export function useSportsStore() {
 
         try {
           await executeFirestoreOp(op);
+          succeededOps.push(op);
           setOutbox((prev) => {
             const next = removeOperationById(prev, op.id);
             outboxRef.current = next;
@@ -886,11 +908,15 @@ export function useSportsStore() {
           }
         }
       }
+
+      if (succeededOps.length > 0) {
+        void mirrorOpsToCloudSql(user, succeededOps);
+      }
     } finally {
       flushingRef.current = false;
       setIsSyncing(false);
     }
-  }, []);
+  }, [mirrorOpsToCloudSql]);
 
   // Online / offline network event tracking
   useEffect(() => {
