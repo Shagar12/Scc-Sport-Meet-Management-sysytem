@@ -1,0 +1,354 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'sangeethshagar@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidHouse(h) {
+      return h is string && h in ['mars', 'jupiter', 'venus', 'uranus'];
+    }
+
+    function isValidGender(g) {
+      return g is string && g in ['Male', 'Female'];
+    }
+
+    function isValidAgeCategoryItem(item) {
+      return item is map
+        && item.keys().hasAll(['id', 'name', 'minAge', 'maxAge'])
+        && item.keys().hasOnly(['id', 'name', 'minAge', 'maxAge'])
+        && isValidId(item.id)
+        && item.name is string && item.name.size() >= 1 && item.name.size() <= 40
+        && item.minAge is int && item.minAge >= 1 && item.minAge <= 100
+        && item.maxAge is int && item.maxAge >= item.minAge && item.maxAge <= 100;
+    }
+
+    function isValidHouseCredEntry(item, house) {
+      return item is map
+        && item.keys().hasAll(['house', 'password', 'isActive'])
+        && item.keys().hasOnly(['house', 'password', 'isActive'])
+        && item.house == house
+        && item.password is string && item.password.size() >= 4 && item.password.size() <= 100
+        && item.isActive is bool;
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidMeetConfig(data) {
+      return data.keys().hasAll(['meetName', 'cutoffDate', 'ageCategories', 'updatedAt'])
+        && data.keys().hasOnly(['meetName', 'cutoffDate', 'ageCategories', 'updatedAt'])
+        && data.meetName is string && data.meetName.size() >= 1 && data.meetName.size() <= 120
+        && data.cutoffDate is string && data.cutoffDate.size() == 10 && data.cutoffDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.ageCategories is list && data.ageCategories.size() >= 1 && data.ageCategories.size() <= 20
+        && isValidAgeCategoryItem(data.ageCategories[0])
+        && data.updatedAt == request.time;
+    }
+
+    function isValidGame(data) {
+      return data.keys().hasAll(['id', 'name', 'eventType', 'allowedAgeCategories', 'allowedGenders', 'playableSlots', 'subSlots', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'eventType', 'allowedAgeCategories', 'allowedGenders', 'playableSlots', 'subSlots', 'updatedAt'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.eventType is string && data.eventType in ['individual', 'team']
+        && data.allowedAgeCategories is list && data.allowedAgeCategories.size() >= 1 && data.allowedAgeCategories.size() <= 20
+        && data.allowedAgeCategories[0] is string && data.allowedAgeCategories[0].size() <= 40
+        && data.allowedGenders is list && data.allowedGenders.size() >= 1 && data.allowedGenders.size() <= 2
+        && data.allowedGenders[0] is string && data.allowedGenders[0] in ['Male', 'Female']
+        && data.playableSlots is int && data.playableSlots >= 1 && data.playableSlots <= 50
+        && data.subSlots is int && data.subSlots >= 0 && data.subSlots <= 30
+        && data.updatedAt == request.time;
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['id', 'admissionNo', 'fullName', 'dob', 'gender', 'grade', 'house', 'talentedAthlete', 'primarySport', 'biometrics', 'computedAge', 'verifiedCategory', 'dobStatus', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'admissionNo', 'fullName', 'dob', 'gender', 'grade', 'house', 'talentedAthlete', 'primarySport', 'biometrics', 'computedAge', 'verifiedCategory', 'dobStatus', 'dobFlagReason', 'updatedAt'])
+        && isValidId(data.id)
+        && data.admissionNo is string && data.admissionNo.size() >= 1 && data.admissionNo.size() <= 40
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.dob is string && data.dob.size() <= 20
+        && isValidGender(data.gender)
+        && data.grade is string && data.grade.size() <= 40
+        && (data.house == null || isValidHouse(data.house))
+        && data.talentedAthlete is bool
+        && data.primarySport is string && data.primarySport.size() <= 80
+        && data.biometrics is map
+        && data.biometrics.keys().hasOnly(['restingHeartRate', 'medicalNotes'])
+        && (!('restingHeartRate' in data.biometrics) || (data.biometrics.restingHeartRate is number && data.biometrics.restingHeartRate >= 20 && data.biometrics.restingHeartRate <= 250))
+        && (!('medicalNotes' in data.biometrics) || (data.biometrics.medicalNotes is string && data.biometrics.medicalNotes.size() <= 300))
+        && (data.computedAge == null || (data.computedAge is int && data.computedAge >= 0 && data.computedAge <= 100))
+        && (data.verifiedCategory == null || (data.verifiedCategory is string && data.verifiedCategory.size() <= 40))
+        && data.dobStatus is string && data.dobStatus in ['verified', 'out_of_range', 'invalid']
+        && (!('dobFlagReason' in data) || (data.dobFlagReason is string && data.dobFlagReason.size() <= 200))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidTeacher(data) {
+      return data.keys().hasAll(['id', 'fullName', 'staffIdOrSubject', 'role', 'house', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'fullName', 'staffIdOrSubject', 'role', 'house', 'updatedAt'])
+        && isValidId(data.id)
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.staffIdOrSubject is string && data.staffIdOrSubject.size() >= 1 && data.staffIdOrSubject.size() <= 120
+        && data.role is string && data.role in ['Master-in-Charge', 'Assistant Master-in-Charge', 'Track Coach', 'Field Coach']
+        && isValidHouse(data.house)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidTeamCard(data) {
+      return data.keys().hasAll(['id', 'house', 'title', 'status', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'house', 'title', 'status', 'submittedAt', 'reviewedAt', 'adminNote', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidHouse(data.house)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.status is string && data.status in ['draft', 'pending_review', 'approved', 'revision_requested']
+        && (!('submittedAt' in data) || (data.submittedAt is string && data.submittedAt.size() <= 50))
+        && (!('reviewedAt' in data) || (data.reviewedAt is string && data.reviewedAt.size() <= 50))
+        && (!('adminNote' in data) || (data.adminNote is string && data.adminNote.size() <= 500))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidTeamCardEntry(data) {
+      return data.keys().hasAll(['id', 'cardId', 'house', 'studentId', 'eventName', 'eventType', 'ageCategory', 'gender', 'playerRole', 'auditStatus', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'cardId', 'house', 'studentId', 'eventName', 'eventType', 'ageCategory', 'gender', 'playerRole', 'auditStatus', 'rejectionReason', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidId(data.cardId)
+        && isValidHouse(data.house)
+        && isValidId(data.studentId)
+        && data.eventName is string && data.eventName.size() >= 1 && data.eventName.size() <= 80
+        && data.eventType is string && data.eventType in ['individual', 'team']
+        && data.ageCategory is string && data.ageCategory.size() >= 1 && data.ageCategory.size() <= 40
+        && isValidGender(data.gender)
+        && data.playerRole is string && data.playerRole in ['playable', 'sub']
+        && data.auditStatus is string && data.auditStatus in ['pending', 'confirmed', 'rejected']
+        && (!('rejectionReason' in data) || (data.rejectionReason is string && data.rejectionReason.size() <= 300))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidScore(data) {
+      return data.keys().hasAll(['id', 'house', 'eventName', 'ageCategory', 'place', 'points', 'timestamp', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'house', 'eventName', 'ageCategory', 'place', 'points', 'timestamp', 'note', 'updatedAt'])
+        && isValidId(data.id)
+        && isValidHouse(data.house)
+        && data.eventName is string && data.eventName.size() >= 1 && data.eventName.size() <= 100
+        && data.ageCategory is string && data.ageCategory.size() >= 1 && data.ageCategory.size() <= 40
+        && data.place is string && data.place in ['1st', '2nd', '3rd', 'Record Bonus', 'Deduction']
+        && data.points is int && data.points >= -100 && data.points <= 200
+        && data.timestamp is string && data.timestamp.size() >= 1 && data.timestamp.size() <= 50
+        && (!('note' in data) || (data.note is string && data.note.size() <= 300))
+        && data.updatedAt == request.time;
+    }
+
+    function isValidHouseAccess(data) {
+      return data.keys().hasAll(['house', 'isActive', 'passcodeHash', 'updatedAt'])
+        && data.keys().hasOnly(['house', 'isActive', 'passcodeHash', 'updatedAt'])
+        && isValidHouse(data.house)
+        && data.isActive is bool
+        && data.passcodeHash is string && data.passcodeHash.size() == 64
+        && data.updatedAt == request.time;
+    }
+
+    function isValidMeetSecrets(data) {
+      return data.keys().hasAll(['adminPassword', 'houseCredentials', 'updatedAt'])
+        && data.keys().hasOnly(['adminPassword', 'houseCredentials', 'updatedAt'])
+        && data.adminPassword is string && data.adminPassword.size() >= 4 && data.adminPassword.size() <= 100
+        && data.houseCredentials is map
+        && data.houseCredentials.keys().hasAll(['mars', 'jupiter', 'venus', 'uranus'])
+        && data.houseCredentials.keys().hasOnly(['mars', 'jupiter', 'venus', 'uranus'])
+        && isValidHouseCredEntry(data.houseCredentials.mars, 'mars')
+        && isValidHouseCredEntry(data.houseCredentials.jupiter, 'jupiter')
+        && isValidHouseCredEntry(data.houseCredentials.venus, 'venus')
+        && isValidHouseCredEntry(data.houseCredentials.uranus, 'uranus')
+        && data.updatedAt == request.time;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 150
+        && data.createdAt == request.time;
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['id', 'startTime', 'eventName', 'category', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'startTime', 'eventName', 'category', 'updatedAt'])
+        && isValidId(data.id)
+        && data.startTime is string && data.startTime.size() == 5 && data.startTime.matches('^([01]\\d|2[0-3]):[0-5]\\d$')
+        && data.eventName is string && data.eventName.size() >= 1 && data.eventName.size() <= 80
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 40
+        && data.updatedAt == request.time;
+    }
+
+    // --- Connection Probe ---
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // --- Collection Rules ---
+    match /meetConfig/{configId} {
+      allow get: if isVerified() && isValidId(configId);
+      allow create, update: if isAdmin() && isValidId(configId) && isValidMeetConfig(incoming());
+      allow delete: if isAdmin() && isValidId(configId);
+    }
+
+    match /games/{gameId} {
+      allow get: if isVerified() && isValidId(gameId);
+      allow list: if isVerified() && existing().eventType in ['individual', 'team'];
+      allow create: if isAdmin() && isValidId(gameId) && isValidGame(incoming()) && incoming().id == gameId;
+      allow update: if isAdmin() && isValidId(gameId) && isValidGame(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(gameId);
+    }
+
+    match /students/{studentId} {
+      allow get: if isVerified() && isValidId(studentId);
+      allow list: if isVerified() && existing().gender in ['Male', 'Female'];
+      allow create: if isAdmin() && isValidId(studentId) && isValidStudent(incoming()) && incoming().id == studentId;
+      allow update: if isAdmin() && isValidId(studentId) && isValidStudent(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(studentId);
+    }
+
+    match /teachers/{teacherId} {
+      allow get: if isVerified() && isValidId(teacherId);
+      allow list: if isVerified() && existing().house in ['mars', 'jupiter', 'venus', 'uranus'];
+      allow create: if isAdmin() && isValidId(teacherId) && isValidTeacher(incoming()) && incoming().id == teacherId;
+      allow update: if isAdmin() && isValidId(teacherId) && isValidTeacher(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(teacherId);
+    }
+
+    match /teamCards/{cardId} {
+      allow get: if isVerified() && isValidId(cardId);
+      allow list: if isVerified() && existing().house in ['mars', 'jupiter', 'venus', 'uranus'];
+      allow create: if isValidId(cardId)
+        && isValidTeamCard(incoming())
+        && incoming().id == cardId
+        && (
+          isAdmin() ||
+          (
+            isVerified()
+            && cardId == ('card-' + incoming().house + '-01')
+            && incoming().status == 'draft'
+            && !('submittedAt' in incoming())
+            && !('reviewedAt' in incoming())
+            && !('adminNote' in incoming())
+          )
+        );
+      allow update: if isValidId(cardId)
+        && isValidTeamCard(incoming())
+        && incoming().id == existing().id
+        && incoming().house == existing().house
+        && (
+          isAdmin() ||
+          (
+            isVerified()
+            && existing().status in ['draft', 'revision_requested']
+            && incoming().status == 'pending_review'
+            && incoming().title == existing().title
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'submittedAt', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(cardId);
+
+      match /entries/{entryId} {
+        allow get: if isVerified() && isValidId(cardId) && isValidId(entryId);
+        allow list: if isVerified() && existing().cardId == cardId;
+        allow create: if isVerified()
+          && isValidId(cardId)
+          && isValidId(entryId)
+          && isValidTeamCardEntry(incoming())
+          && incoming().id == entryId
+          && incoming().cardId == cardId
+          && (
+            isAdmin() ||
+            (
+              incoming().auditStatus == 'pending'
+              && !('rejectionReason' in incoming())
+              && exists(/databases/$(database)/documents/teamCards/$(cardId))
+              && get(/databases/$(database)/documents/teamCards/$(cardId)).data.house == incoming().house
+              && get(/databases/$(database)/documents/teamCards/$(cardId)).data.status in ['draft', 'revision_requested']
+            )
+          );
+        allow update: if isAdmin()
+          && isValidId(cardId)
+          && isValidId(entryId)
+          && isValidTeamCardEntry(incoming())
+          && incoming().id == existing().id
+          && incoming().cardId == existing().cardId
+          && incoming().house == existing().house;
+        allow delete: if isVerified()
+          && isValidId(cardId)
+          && isValidId(entryId)
+          && (
+            isAdmin() ||
+            (
+              exists(/databases/$(database)/documents/teamCards/$(cardId))
+              && get(/databases/$(database)/documents/teamCards/$(cardId)).data.status in ['draft', 'revision_requested']
+            )
+          );
+      }
+    }
+
+    match /scores/{scoreId} {
+      allow get: if isVerified() && isValidId(scoreId);
+      allow list: if isVerified() && existing().house in ['mars', 'jupiter', 'venus', 'uranus'];
+      allow create: if isAdmin() && isValidId(scoreId) && isValidScore(incoming()) && incoming().id == scoreId;
+      allow update: if isAdmin() && isValidId(scoreId) && isValidScore(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(scoreId);
+    }
+
+    match /houseAccess/{houseId} {
+      allow get: if isVerified() && isValidId(houseId) && isValidHouse(houseId);
+      allow list: if isVerified() && existing().house in ['mars', 'jupiter', 'venus', 'uranus'];
+      allow create, update: if isAdmin() && isValidId(houseId) && isValidHouse(houseId) && isValidHouseAccess(incoming()) && incoming().house == houseId;
+      allow delete: if isAdmin() && isValidId(houseId);
+    }
+
+    match /meetSecrets/{secretId} {
+      allow get: if isAdmin() && isValidId(secretId);
+      allow create, update: if isAdmin() && isValidId(secretId) && isValidMeetSecrets(incoming());
+      allow delete: if isAdmin() && isValidId(secretId);
+    }
+
+    match /admins/{userId} {
+      allow get: if isVerified() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow create: if isAdmin() && isValidId(userId) && isValidAdminUser(incoming()) && incoming().uid == userId;
+      allow update: if isAdmin() && isValidId(userId) && isValidAdminUser(incoming()) && incoming().uid == existing().uid;
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /schedules/{scheduleId} {
+      allow get: if isVerified() && isValidId(scheduleId);
+      allow list: if isVerified() && existing().startTime >= '00:00';
+      allow create: if isAdmin() && isValidId(scheduleId) && isValidSchedule(incoming()) && incoming().id == scheduleId;
+      allow update: if isAdmin() && isValidId(scheduleId) && isValidSchedule(incoming()) && incoming().id == existing().id;
+      allow delete: if isAdmin() && isValidId(scheduleId);
+    }
+  }
+}

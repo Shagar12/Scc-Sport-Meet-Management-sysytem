@@ -1,0 +1,215 @@
+{
+  "entities": {
+    "MeetConfig": {
+      "title": "MeetConfig",
+      "description": "Global sports meet configuration including meet name, DOB cutoff date, and age categories.",
+      "type": "object",
+      "properties": {
+        "meetName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "cutoffDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "maxLength": 10 },
+        "ageCategories": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["meetName", "cutoffDate", "ageCategories", "updatedAt"]
+    },
+    "GameDefinition": {
+      "title": "GameDefinition",
+      "description": "Admin-configured event or game with allowed age categories, genders, and playable/sub quotas.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "eventType": { "type": "string", "enum": ["individual", "team"], "maxLength": 20 },
+        "allowedAgeCategories": { "type": "array" },
+        "allowedGenders": { "type": "array" },
+        "playableSlots": { "type": "integer" },
+        "subSlots": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "eventType", "allowedAgeCategories", "allowedGenders", "playableSlots", "subSlots", "updatedAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Master student athlete record with DOB verification, grade, house assignment, and fitness notes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "admissionNo": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "dob": { "type": "string", "maxLength": 20 },
+        "gender": { "type": "string", "enum": ["Male", "Female"], "maxLength": 10 },
+        "grade": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "house": { "type": "string", "maxLength": 20 },
+        "talentedAthlete": { "type": "boolean" },
+        "primarySport": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "biometrics": { "type": "object" },
+        "computedAge": { "type": "integer" },
+        "verifiedCategory": { "type": "string", "maxLength": 40 },
+        "dobStatus": { "type": "string", "enum": ["verified", "out_of_range", "invalid"], "maxLength": 20 },
+        "dobFlagReason": { "type": "string", "maxLength": 200 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "admissionNo", "fullName", "dob", "gender", "grade", "talentedAthlete", "primarySport", "biometrics", "dobStatus", "updatedAt"]
+    },
+    "Teacher": {
+      "title": "Teacher",
+      "description": "Teacher or coach appointed to a house.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "staffIdOrSubject": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["Master-in-Charge", "Assistant Master-in-Charge", "Track Coach", "Field Coach"], "maxLength": 40 },
+        "house": { "type": "string", "enum": ["mars", "jupiter", "venus", "uranus"], "maxLength": 20 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fullName", "staffIdOrSubject", "role", "house", "updatedAt"]
+    },
+    "TeamCard": {
+      "title": "TeamCard",
+      "description": "House Playing Team Card header metadata and review status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "house": { "type": "string", "enum": ["mars", "jupiter", "venus", "uranus"], "maxLength": 20 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "status": { "type": "string", "enum": ["draft", "pending_review", "approved", "revision_requested"], "maxLength": 30 },
+        "submittedAt": { "type": "string", "maxLength": 50 },
+        "reviewedAt": { "type": "string", "maxLength": 50 },
+        "adminNote": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "house", "title", "status", "updatedAt"]
+    },
+    "TeamCardEntry": {
+      "title": "TeamCardEntry",
+      "description": "Individual athlete entry (Playable or Sub) inside a House Playing Team Card.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "cardId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "house": { "type": "string", "enum": ["mars", "jupiter", "venus", "uranus"], "maxLength": 20 },
+        "studentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "eventType": { "type": "string", "enum": ["individual", "team"], "maxLength": 20 },
+        "ageCategory": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "gender": { "type": "string", "enum": ["Male", "Female"], "maxLength": 10 },
+        "playerRole": { "type": "string", "enum": ["playable", "sub"], "maxLength": 20 },
+        "auditStatus": { "type": "string", "enum": ["pending", "confirmed", "rejected"], "maxLength": 20 },
+        "rejectionReason": { "type": "string", "maxLength": 300 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "cardId", "house", "studentId", "eventName", "eventType", "ageCategory", "gender", "playerRole", "auditStatus", "updatedAt"]
+    },
+    "ScoreEntry": {
+      "title": "ScoreEntry",
+      "description": "Event points ledger entry for a house.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "house": { "type": "string", "enum": ["mars", "jupiter", "venus", "uranus"], "maxLength": 20 },
+        "eventName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "ageCategory": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "place": { "type": "string", "enum": ["1st", "2nd", "3rd", "Record Bonus", "Deduction"], "maxLength": 20 },
+        "points": { "type": "integer" },
+        "timestamp": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "note": { "type": "string", "maxLength": 300 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "house", "eventName", "ageCategory", "place", "points", "timestamp", "updatedAt"]
+    },
+    "HouseAccess": {
+      "title": "HouseAccess",
+      "description": "Publicly readable (signed-in) house portal status and SHA-256 passcode hash without plaintext passwords.",
+      "type": "object",
+      "properties": {
+        "house": { "type": "string", "enum": ["mars", "jupiter", "venus", "uranus"], "maxLength": 20 },
+        "isActive": { "type": "boolean" },
+        "passcodeHash": { "type": "string", "minLength": 64, "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["house", "isActive", "passcodeHash", "updatedAt"]
+    },
+    "MeetSecrets": {
+      "title": "MeetSecrets",
+      "description": "Admin-only credentials document for managing house passwords.",
+      "type": "object",
+      "properties": {
+        "adminPassword": { "type": "string", "minLength": 4, "maxLength": 100 },
+        "houseCredentials": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["adminPassword", "houseCredentials", "updatedAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Registry of appointed Meet Administrators.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 150 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "EventSchedule": {
+      "title": "EventSchedule",
+      "description": "Scheduled sports meet event with start time, event name, and age/open category.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "startTime": { "type": "string", "minLength": 5, "maxLength": 5, "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "eventName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "startTime", "eventName", "category", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/meetConfig/{configId}": {
+      "schema": { "$ref": "#/entities/MeetConfig" },
+      "description": "Global sports meet configuration and age category setup."
+    },
+    "/games/{gameId}": {
+      "schema": { "$ref": "#/entities/GameDefinition" },
+      "description": "Individual meet games, assigned age categories, and playable/sub quotas."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Master student athlete roster with DOB verification and grade."
+    },
+    "/teachers/{teacherId}": {
+      "schema": { "$ref": "#/entities/Teacher" },
+      "description": "House master and coach appointments."
+    },
+    "/teamCards/{cardId}": {
+      "schema": { "$ref": "#/entities/TeamCard" },
+      "description": "Playing Team Card status headers for Mars, Jupiter, Venus, and Uranus."
+    },
+    "/teamCards/{cardId}/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/TeamCardEntry" },
+      "description": "Per-player entries (Playable or Sub) belonging to a House Team Card."
+    },
+    "/scores/{scoreId}": {
+      "schema": { "$ref": "#/entities/ScoreEntry" },
+      "description": "Live House points and standings ledger entries."
+    },
+    "/houseAccess/{houseId}": {
+      "schema": { "$ref": "#/entities/HouseAccess" },
+      "description": "House portal lock state and SHA-256 passcode hashes."
+    },
+    "/meetSecrets/{secretId}": {
+      "schema": { "$ref": "#/entities/MeetSecrets" },
+      "description": "Admin-only house password management store."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin UIDs authorized for full meet governance."
+    },
+    "/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/EventSchedule" },
+      "description": "Event schedule items (start time, event name, category) visible to all houses."
+    }
+  }
+}

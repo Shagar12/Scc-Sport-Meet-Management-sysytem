@@ -1,0 +1,6 @@
+{
+  "name": "SCC Inter-House Sports Meet Management System",
+  "description": "Dual-portal athletic meet management system for Mars, Jupiter, Venus, and Uranus houses with DOB verification, Excel bulk import, house appointments, and team card eligibility auditing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
